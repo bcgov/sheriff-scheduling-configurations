@@ -2,7 +2,7 @@ def PIPELINE_NAME = "deployment/test"
 
 def LIB_NAME= "ss-lib"
 def LIB_REPO = "https://github.com/bcgov/sheriff-scheduling-configurations.git"
-def LIB_BRANCH = "feature/ocp4"
+def LIB_BRANCH = "master"
 library identifier: "${LIB_NAME}@${LIB_BRANCH}", 
         retriever: modernSCM(
           [$class: 'GitSCMSource',
