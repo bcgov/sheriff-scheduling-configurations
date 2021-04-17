@@ -6,17 +6,74 @@ metadata:
   annotations:
     openshift.io/display-name: Generic Build Pod
     description:
-      "${NAME} build pod template pre-configured to use a jenkins slave in the
-      same project/namespace"
+      "${NAME} build pod template pre-configured to use a jenkins slave in the same project/namespace"
 objects:
-  - apiVersion: v1
-    kind: ImageStream
+
+  - kind: NetworkPolicy
+    apiVersion: networking.k8s.io/v1
+    metadata:
+      name: nodes-to-jenkins
+      labels:
+        name: nodes-to-jenkins
+    spec:
+      description: |
+        Allow jenkins nodes to talk with jenkins.
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  jenkins: slave
+      podSelector:
+        matchLabels:
+          name: jenkins
+
+  - kind: NetworkPolicy
+    apiVersion: networking.k8s.io/v1
+    metadata:
+      name: jenkins-to-nodes
+      labels:
+        name: jenkins-to-nodes
+    spec:
+      description: |
+        Allow jenkins to talk with it's nodes.
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  name: jenkins
+      podSelector:
+        matchLabels:
+          jenkins: slave
+
+  # - kind: NetworkSecurityPolicy
+  #   apiVersion: security.devops.gov.bc.ca/v1alpha1
+  #   metadata:
+  #     name: jenkins
+  #     labels:
+  #       name: jenkins
+  #   spec:
+  #     description: |
+  #       Allow jenkins and it's nodes to communicate.
+  #     source:
+  #       - - name=jenkins
+  #         - $namespace=${NAMESPACE}
+  #       - - jenkins=slave
+  #         - $namespace=${NAMESPACE}
+  #     destination:
+  #       - - name=jenkins
+  #         - $namespace=${NAMESPACE}
+  #       - - jenkins=slave
+  #         - $namespace=${NAMESPACE}
+
+  - kind: ImageStream
+    apiVersion: v1
     metadata:
       labels:
         build: "${NAME}"
       name: "${NAME}"
-  - apiVersion: v1
-    kind: BuildConfig
+
+  - kind: BuildConfig
+    apiVersion: v1
     metadata:
       labels:
         build: "${NAME}"
@@ -48,8 +105,9 @@ objects:
       triggers:
         - type: ConfigChange
         - type: ImageChange
-  - apiVersion: v1
-    kind: ConfigMap
+
+  - kind: ConfigMap
+    apiVersion: v1
     metadata:
       name: "${NAME}"
       labels:
@@ -69,9 +127,9 @@ objects:
           <containers>
             <org.csanchez.jenkins.plugins.kubernetes.ContainerTemplate>
               <name>jnlp</name>
-              <image>docker-registry.default.svc:5000/${NAMESPACE}/${NAME}</image>
+              <image>image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/${NAME}</image>
               <privileged>false</privileged>
-              <alwaysPullImage>false</alwaysPullImage>
+              <alwaysPullImage>true</alwaysPullImage>
               <workingDir>/tmp</workingDir>
               <command></command>
               <args>${computer.jnlpmac} ${computer.name}</args>
@@ -102,19 +160,16 @@ parameters:
   - name: SOURCE_REPOSITORY_REF
     displayName: Git Reference
     description:
-      Set this to a branch name, tag or other ref of your repository if you
-      are not using the default (dev) branch.
-    value: master
+      Set this to a branch name, tag or other ref of your repository if you are not using the default (dev) branch.
+    value: 
   - name: SOURCE_CONTEXT_DIR
     displayName: Git Context Directory
     description:
-      Set this to the directory where the build information is (e.g. Dockerfile)
-      if not using the default
+      Set this to the directory where the build information is (e.g. Dockerfile) if not using the default
   - name: BUILDER_IMAGE_NAME
     displayName: Image name from which to build this pod
     description:
-      The build image which this build pod will extend to create it's new
-      build pod type.
+      The build image which this build pod will extend to create it's new build pod type.
     value: registry.access.redhat.com/openshift3/jenkins-slave-base-rhel7
   - name: SLAVE_IMAGE_TAG
     displayName: Image tag for Jenkins slave.
@@ -125,10 +180,10 @@ parameters:
     description: Path for alternate Dockerfile to use for build
     value: Dockerfile
   - name: NAMESPACE
-    description: Target namespace reference (i.e. 'jag-shuber-')
+    description: Target namespace reference.
     displayName: Namespace
     required: true
-    value: jag-shuber-tools
+    value: 01a527-tools
   - name: CPU_REQUEST
     description: Minimal CPU needed to run
     displayName: CPU Request
